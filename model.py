@@ -46,6 +46,10 @@ df['Hour'] = pd.Series(df.index).apply(lambda x: x.hour).to_list()
 #Normalization - Drop the ID column from the dataset
 df.drop('ID', axis=1, inplace=True)
 
+#Split the data into independent and dependent variables
+X = df[['Junction', 'Year', 'Month', 'Day', 'Hour']]
+y = df['Vehicles']
+
 #Feature selection using RFE with Random Forest
 rf = RandomForestRegressor()
 rfe = RFE(rf, n_features_to_select=3)
