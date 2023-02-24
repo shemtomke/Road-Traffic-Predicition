@@ -295,11 +295,13 @@ def make_metrics(models):
     data = {
         'name': [model.name for model in models[1:]],
         'r2': [model.r2 for model in models[1:]],
-        'rmse': [model.rmse for model in models[1:]]
+        'rmse': [model.rmse for model in models[1:]],
+        'rmae': [model.rmae for model in models[1:]]
     }
-    data['name'] = 'average R2 and sum RMSE'
+    data['name'] = 'average R2, sum RMSE and sum RMAE'
     data['r2'].append(np.mean(data['r2']))
     data['rmse'].append(np.sum(data['rmse']))
+    data['rmae'].append(np.sum(data['rmae']))
     return pd.DataFrame(data)
 
 z_data = get_list_data(z_df)
@@ -319,6 +321,10 @@ class Model:
   def cal_rmse(self):
     self.rmse = mean_squared_error(self.ytest, self.ypredict, squared=False)
     return self.rmse
+
+  def cal_rmae(self):
+    self.rmae = mean_absolute_error(self.ytest, self.ypredict)
+    return self.rmae
 
   def prequisite(self, test_size):
     self.features = [i for i in self.data.columns if i != self.predict_features]
@@ -342,6 +348,7 @@ class Model:
     self.fit()
     self.cal_rmse()
     self.cal_r2_score()
+    self.cal_rmae()
     return None
 
   def feature_importances(self, ax) -> None:
@@ -363,7 +370,7 @@ class Model:
   def __repr__(self) -> str:
     if not self.is_trained:
       return f'<{self.name}> (is not trained yet)>'
-    return f'<({self.name}: [R² Score: {self.r2}], [RMSE: {self.rmse}])>'
+    return f'<({self.name}: [R² Score: {self.r2}], [RMSE: {self.rmse}], [RMAE: {self.rmae}])>'
 
 
 # Train Model
