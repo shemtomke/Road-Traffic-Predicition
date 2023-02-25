@@ -11,14 +11,12 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib.dates import DateFormatter
 from datetime import datetime, timedelta, date
-from scipy import stats
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.ensemble import GradientBoostingRegressor
 from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
-from sklearn.feature_selection import RFE
+from sklearn.model_selection import KFold
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -45,56 +43,6 @@ df['Hour'] = pd.Series(df.index).apply(lambda x: x.hour).to_list()
 
 #Normalization - Drop the ID column from the dataset
 df.drop('ID', axis=1, inplace=True)
-
-#Split the data into independent and dependent variables
-X = df[['Junction', 'Year', 'Month', 'Day', 'Hour']]
-y = df['Vehicles']
-
-#Feature selection using RFE with Random Forest
-rf = RandomForestRegressor()
-rfe = RFE(rf, n_features_to_select=3)
-rfe.fit(X, y)
-X_rfe = rfe.transform(X)
-
-print("Original number of features:", X.shape[1])
-print("Number of features after RFE:", X_rfe.shape[1])
-
-#Split the data into training and testing sets
-X_train, X_test, y_train, y_test = train_test_split(X_rfe, y, test_size=0.3, random_state=42)
-
-#Create and train a Random Forest model
-rf_model = RandomForestRegressor()
-rf_model.fit(X_train, y_train)
-
-#Create and train a Gradient Boosting model
-gb_model = GradientBoostingRegressor()
-gb_model.fit(X_train, y_train)
-
-#Make predictions using the Random Forest model
-rf_pred = rf_model.predict(X_test)
-
-#Make predictions using the Gradient Boosting model
-gb_pred = gb_model.predict(X_test)
-
-#Calculate the evaluation metrics for the Random Forest model
-rf_mae = mean_absolute_error(y_test, rf_pred)
-rf_mse = mean_squared_error(y_test, rf_pred)
-rf_r2 = r2_score(y_test, rf_pred)
-
-print("Random Forest Evaluation Metrics:")
-print("MAE:", rf_mae)
-print("MSE:", rf_mse)
-print("R2:", rf_r2)
-
-#Calculate the evaluation metrics for the Gradient Boosting model
-gb_mae = mean_absolute_error(y_test, gb_pred)
-gb_mse = mean_squared_error(y_test, gb_pred)
-gb_r2 = r2_score(y_test, rf_pred)
-
-print("Gradient Boosting Metrics:")
-print("MAE:", gb_mae)
-print("MSE:", gb_mse)
-print("R2:", gb_r2)
 
 # Data Exploration
 def make_hist(junction=1):
@@ -309,13 +257,14 @@ for i in z_data:
     print(i.head(1))
 
 class Model:
-  def __init__(self, name, data, predict_features, test_size, ml_model):
+  def __init__(self, name, data, predict_features, test_size, ml_model, n_splits=10):
     self.name = name
     self.data = data
     self.predict_features = predict_features
     self.is_trained = False
     self.test_size = test_size
     self.ml_model = ml_model
+    self.n_splits = n_splits
     self.do_things()
 
   def cal_rmse(self):
@@ -342,6 +291,16 @@ class Model:
   def cal_r2_score(self):
     self.r2 = r2_score(self.ytest, self.ypredict)
     return self.r2
+  # CROSS VALIDATION
+  def k_fold_cv(self):
+    kf = KFold(n_splits=self.n_splits, shuffle=True)
+    for train_idx, test_idx in kf.split(self.X):
+        Xtrain, ytrain = self.X[train_idx], self.y[train_idx]
+        Xtest, ytest = self.X[test_idx], self.y[test_idx]
+        self.fit(Xtrain, ytrain)
+        self.cal_rmse()
+        self.cal_r2_score()
+        self.cal_rmae()
 
   def do_things(self) -> None:
     self.prequisite(self.test_size)
